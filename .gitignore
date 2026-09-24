@@ -9,10 +9,12 @@ wheels/
 logs/
 
 vosk-model-en-us-0.22/
+vosk-model-small-en-us-0.15/
 
 output.wav
 robot_output.wav
 *.wav
+
 
 *.log
 

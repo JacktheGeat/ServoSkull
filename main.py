@@ -10,13 +10,7 @@ import agent
 from piper import PiperVoice
 
 from scipy.io import wavfile
-import librosa
-import soundfile as sf
-
-def pitch_shift(input_path, output_path, semitones=-3):
-    y, sr = librosa.load(input_path, sr=None)
-    y_shifted = librosa.effects.pitch_shift(y, sr=sr, n_steps=semitones)
-    sf.write(output_path, y_shifted, sr)
+from scipy.signal import resample
 
 def ring_modulate(input_path, output_path, carrier_freq=35):
     rate, data = wavfile.read(input_path)
@@ -40,28 +34,27 @@ def bitcrush(input_path, output_path, bit_depth=8, sample_rate_reduction=2):
     wavfile.write(output_path, rate, data.astype(np.int16))
 
 def robotify(input_path="output.wav", final_path="robot_output.wav",
-             semitones=-3, carrier_freq=35, bit_depth=8, sample_rate_reduction=2):
+             speed_factor=0.85, carrier_freq=35, bit_depth=8, sample_rate_reduction=2):
 
-    # Load once
-    y, sr = librosa.load(input_path, sr=None)
+    rate, y = wavfile.read(input_path)
+    y = y.astype(np.float32)
 
-    # 1. Pitch shift (in memory)
-    y = librosa.effects.pitch_shift(y, sr=sr, n_steps=semitones)
+    # Cheap pitch-down via resampling (also slightly slows speech, which reads as mechanical)
+    new_len = int(len(y) / speed_factor)
+    y = resample(y, new_len)
 
-    # 2. Ring modulate (in memory)
-    t = np.arange(len(y)) / sr
+    # Ring modulate
+    t = np.arange(len(y)) / rate
     carrier = np.sin(2 * np.pi * carrier_freq * t)
     y = y * carrier
 
-    # 3. Bitcrush (in memory)
+    # Bitcrush
     max_val = 2 ** (bit_depth - 1)
-    y = np.round(y * max_val) / max_val
+    y = np.round(y / 32768 * max_val) / max_val * 32768
     y = np.repeat(y[::sample_rate_reduction], sample_rate_reduction)[:len(y)]
 
-    # Normalize and write ONCE
-    y = y / np.max(np.abs(y) + 1e-9)
-    wavfile.write(final_path, sr, (y * 32767).astype(np.int16))
-
+    y = y / (np.max(np.abs(y)) + 1e-9)
+    wavfile.write(final_path, rate, (y * 32767).astype(np.int16))
     return final_path
 
 RATE = 16000
@@ -128,7 +121,7 @@ def play_audio_bytes(audio_bytes, rate=16000, channels=1):
     stream.close()
     audio.terminate()
 
-piper_voice = PiperVoice.load("en_GB-northern_english_male-medium.onnx")
+piper_voice = PiperVoice.load("en_GB-northern_english_male-x_small.onnx")
 
 def speak_and_play(text, output_path="output.wav"):
     if not text:
