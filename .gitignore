@@ -1,0 +1,20 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.env
+logs/
+
+vosk-model-en-us-0.22/
+
+output.wav
+robot_output.wav
+*.wav
+
+*.log
+
+# Virtual environments
+.venv
