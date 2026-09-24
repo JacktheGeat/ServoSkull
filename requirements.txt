@@ -1,0 +1,9 @@
+cohere
+librosa
+piper-tts
+dotenv
+vosk
+openwakeword
+pyaudio
+numpy
+scipy
